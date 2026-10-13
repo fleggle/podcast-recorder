@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Linux GUI build deps
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev
+
+      - name: Build
+        run: |
+          mkdir -p build
+          go build -o build/podcast-recorder .
+
+      # johnvansickle.com publishes well-known static (fully self-contained)
+      # Linux ffmpeg builds, widely used for exactly this kind of bundling.
+      # NOTE: these builds are GPL-licensed; see NOTICE/licensing considerations
+      # before distributing further.
+      - name: Fetch static ffmpeg
+        run: |
+          curl -fsSL -o /tmp/ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+          mkdir -p /tmp/ffmpeg-extract
+          tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-extract --strip-components=1
+          cp /tmp/ffmpeg-extract/ffmpeg build/ffmpeg
+          chmod +x build/ffmpeg build/podcast-recorder
+
+      - name: Package
+        run: |
+          cd build
+          zip -r "../podcast-recorder-${{ github.ref_name }}-linux-amd64.zip" .
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: podcast-recorder-${{ github.ref_name }}-linux-amd64.zip
+          generate_release_notes: true
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: |
+          mkdir -p build
+          go build -o build/podcast-recorder.exe .
+
+      # gyan.dev's "essentials" build is the standard static ffmpeg.exe
+      # distribution for Windows. GPL-licensed; see NOTICE before
+      # distributing further.
+      - name: Fetch static ffmpeg
+        run: |
+          curl -fsSL -o /tmp/ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
+          mkdir -p /tmp/ffmpeg-extract
+          7z x /tmp/ffmpeg.zip -o/tmp/ffmpeg-extract -y > /dev/null
+          cp /tmp/ffmpeg-extract/*/bin/ffmpeg.exe build/ffmpeg.exe
+
+      - name: Package
+        run: |
+          cd build
+          7z a "../podcast-recorder-${{ github.ref_name }}-windows-amd64.zip" .
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: podcast-recorder-${{ github.ref_name }}-windows-amd64.zip
+          generate_release_notes: true
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: |
+          mkdir -p build
+          go build -o build/podcast-recorder .
+
+      # macos-latest runners are arm64; Homebrew gives us a native ffmpeg
+      # build for that arch. It's dynamically linked against Homebrew's
+      # dylibs, so dylibbundler copies those dylibs alongside the binary
+      # and rewrites its load paths to be self-contained (@executable_path),
+      # so the zip works on a Mac without Homebrew/ffmpeg installed.
+      - name: Bundle ffmpeg
+        run: |
+          brew install ffmpeg dylibbundler
+          cp "$(brew --prefix ffmpeg)/bin/ffmpeg" build/ffmpeg
+          chmod +w build/ffmpeg
+          mkdir -p build/libs
+          dylibbundler -od -b -x build/ffmpeg -d build/libs -p '@executable_path/libs/'
+
+      - name: Package
+        run: |
+          cd build
+          zip -r "../podcast-recorder-${{ github.ref_name }}-macos-arm64.zip" .
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: podcast-recorder-${{ github.ref_name }}-macos-arm64.zip
+          generate_release_notes: true
