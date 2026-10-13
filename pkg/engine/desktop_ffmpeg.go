@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"path/filepath"
+	"path"
 	"regexp"
 	"sync"
 	"time"
@@ -67,7 +67,7 @@ func BuildFFmpegArgs(session SessionConfig, timestamp string, format string) []s
 		}
 
 		filename := fmt.Sprintf("%s_%s_%s.wav", epName, timestamp, speaker)
-		outPath := filepath.Join(session.OutputDir, filename)
+		outPath := path.Join(session.OutputDir, filename)
 
 		args = append(args,
 			"-map", fmt.Sprintf("%d:a", i),

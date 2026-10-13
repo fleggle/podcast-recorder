@@ -20,10 +20,10 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Fyne's GUI layer needs these X11/OpenGL dev headers to link on Linux.
+      # Fyne's GUI layer needs these X11/OpenGL/Wayland dev headers to compile and link on Linux.
       - name: Install Linux GUI build deps
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev libwayland-dev libxkbcommon-dev
 
       - name: Vet
         run: go vet ./...

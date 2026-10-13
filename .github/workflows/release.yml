@@ -17,7 +17,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Install Linux GUI build deps
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev libwayland-dev libxkbcommon-dev
 
       - name: Build
         run: |
